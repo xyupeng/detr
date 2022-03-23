@@ -232,6 +232,9 @@ class SetCriterion(nn.Module):
 
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs_without_aux, targets)
+        # indices: list of tuple; len(indices) == B
+        # indices[i][0]: LongTensor(shape=[num_gt_boxes_i]); indices of matching queries; increasing order
+        # indices[i][1]: LongTensor(shape=[num_gt_boxes_i]); a permutation of torch.arange(num_gt_boxes_i)
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_boxes = sum(len(t["labels"]) for t in targets)
@@ -239,6 +242,7 @@ class SetCriterion(nn.Module):
         if is_dist_avail_and_initialized():
             torch.distributed.all_reduce(num_boxes)
         num_boxes = torch.clamp(num_boxes / get_world_size(), min=1).item()
+        # avg num_boxes per gpu
 
         # Compute all the requested losses
         losses = {}
