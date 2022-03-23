@@ -26,6 +26,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     print_freq = 10
 
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+        # targets: list of dict
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -36,7 +37,11 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         #   'aux_outputs': list of {'pred_logits', 'pred_boxes'} of intermediate layers
         # }
         loss_dict = criterion(outputs, targets)
+        # loss_dict.keys: 'loss_ce', 'class_error', 'loss_bbox', 'loss_giou', 'cardinality_error';
+        # additional keys with suffix '_i' if args.aux_loss; 0 <= i <= 4
         weight_dict = criterion.weight_dict
+        # weight_dict.keys: 'loss_ce': 1, 'loss_bbox': 5, 'loss_giou': 2
+        # additional keys with suffix '_i' and same values, if args.aux_loss; 0 <= i <=4
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
 
         # reduce losses over all GPUs for logging purposes

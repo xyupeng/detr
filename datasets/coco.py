@@ -15,13 +15,29 @@ import datasets.transforms as T
 
 
 class CocoDetection(torchvision.datasets.CocoDetection):
-    def __init__(self, img_folder, ann_file, transforms, return_masks):
+    def __init__(self, img_folder, ann_file, transforms, return_masks=False):
         super(CocoDetection, self).__init__(img_folder, ann_file)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks)
 
     def __getitem__(self, idx):
+        """
+        Return:
+            img: shape=[3, H, W]
+            target: {
+                'boxes': FloatTensor[shape=[num_boxes, 4]]; within [0, 1]; box format: cxcywh
+                'labels': LongTensor[shape=[num_boxes, ]]
+                'image_id': single int tensor
+                'area': FloatTensor[shape=[num_boxes, ]]
+                'iscrowd': LongTensor[shape=[num_boxes, ]]; 0 or 1
+                'orig_size': LongTensor((H_orig, W_orig))
+                'size': LongTensor((H, W))
+            }
+        """
         img, target = super(CocoDetection, self).__getitem__(idx)
+        # target: list of dict; len(target) == num_boxes
+        # target[0].keys: 'segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'
+        # 'bbox': [x0, y0, w, h]; x0: left, y0: top; float numbers
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)
@@ -57,7 +73,7 @@ class ConvertCocoPolysToMask(object):
         image_id = target["image_id"]
         image_id = torch.tensor([image_id])
 
-        anno = target["annotations"]
+        anno = target["annotations"]  # list of dict
 
         anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
 

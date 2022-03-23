@@ -60,7 +60,7 @@ class DETR(nn.Module):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
         pos_embed = pos[-1]
-        # features[0].tensors: shape=[B, 2048, H, W]
+        # features[0].tensors: shape=[B, 2048, H, W]  # downsample by 32
         # features[0].mask: shape=[B, H, W]
         # pos_embed: shape=[B, 256, H, W]; positional embedding
 
@@ -95,7 +95,7 @@ class SetCriterion(nn.Module):
         1) we compute hungarian assignment between ground truth boxes and the outputs of the model
         2) we supervise each pair of matched ground-truth / prediction (supervise class and box)
     """
-    def __init__(self, num_classes, matcher, weight_dict, eos_coef, losses):
+    def __init__(self, num_classes, matcher, weight_dict, losses, eos_coef=0.1):
         """ Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category

@@ -152,6 +152,19 @@ def main(args):
 
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set='val', args=args)
+    '''
+        x = dataset_train[0]
+        x[0]: shape=[3, H, W]
+        x[1]: {
+            'boxes': FloatTensor[shape=[num_boxes, 4]]; within [0, 1]; box format: cxcywh
+            'labels': LongTensor[shape=[num_boxes, ]]
+            'image_id': single int tensor
+            'area': FloatTensor[shape=[num_boxes, ]]
+            'iscrowd': LongTensor[shape=[num_boxes, ]]; 0 or 1
+            'orig_size': LongTensor((H_orig, W_orig))
+            'size': LongTensor((H, W))
+        }
+    '''
 
     if args.distributed:
         sampler_train = DistributedSampler(dataset_train)

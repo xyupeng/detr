@@ -75,8 +75,10 @@ def hflip(image, target):
 
 def resize(image, target, size, max_size=None):
     # size can be min_size (scalar) or (w, h) tuple
+    # image: PIL Image
 
     def get_size_with_aspect_ratio(image_size, size, max_size=None):
+        # scale to short_size == size & long_size <= max_size
         w, h = image_size
         if max_size is not None:
             min_original_size = float(min((w, h)))
