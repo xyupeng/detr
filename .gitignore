@@ -1,4 +1,7 @@
 data/
+.idea/
+
+# orig
 .nfs*
 *.ipynb
 *.pyc

@@ -17,7 +17,7 @@ from torch import nn, Tensor
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
+    def __init__(self, d_model=256, nhead=8, num_encoder_layers=6,
                  num_decoder_layers=6, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False,
                  return_intermediate_dec=False):
@@ -45,17 +45,28 @@ class Transformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, src, mask, query_embed, pos_embed):
-        # flatten NxCxHxW to HWxNxC
+        """
+        Args:
+            src: shape=[B, d_model, H, W]
+            mask: BoolTensor; shape=[B, H, W]
+            query_embed: shape=[num_query, d_model]
+            pos_embed: shape=[B, 256, H, W]
+        """
         bs, c, h, w = src.shape
-        src = src.flatten(2).permute(2, 0, 1)
-        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
-        query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)
-        mask = mask.flatten(1)
+        src = src.flatten(2).permute(2, 0, 1)  # [HW, B, d_model]
+        pos_embed = pos_embed.flatten(2).permute(2, 0, 1)  # [HW, B, d_model]
+        query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)  # [num_query, B, d_model]
+        mask = mask.flatten(1)  # [B, HW]
 
         tgt = torch.zeros_like(query_embed)
-        memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
+        memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)  # [HW, B, d_model]
+        # encoder: q = k = src+pos_embed; v = src
+
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
-                          pos=pos_embed, query_pos=query_embed)
+                          pos=pos_embed, query_pos=query_embed)  # [6, num_query, B, d_model]
+        # decoder:
+        #   self_attn: q = k = tgt + query_embed; v = tgt
+        #   multihead_attn: q = tgt + query_embed; k = memory + pos_embed; v = memory
         return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
 
 

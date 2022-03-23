@@ -20,7 +20,7 @@ from .transformer import build_transformer
 
 class DETR(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbone, transformer, num_classes, num_queries, aux_loss=False):
+    def __init__(self, backbone, transformer, num_classes, num_queries=100, aux_loss=True):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the backbone to be used. See backbone.py
@@ -59,13 +59,22 @@ class DETR(nn.Module):
         if isinstance(samples, (list, torch.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
+        pos_embed = pos[-1]
+        # features[0].tensors: shape=[B, 2048, H, W]
+        # features[0].mask: shape=[B, H, W]
+        # pos_embed: shape=[B, 256, H, W]; positional embedding
 
         src, mask = features[-1].decompose()
+        # src.shape=[B, 2048, H, W]
+        # mask.shape=[B, H, W]; True on padded pixels
         assert mask is not None
-        hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
 
-        outputs_class = self.class_embed(hs)
-        outputs_coord = self.bbox_embed(hs).sigmoid()
+        query_embed = self.query_embed.weight
+        hs = self.transformer(self.input_proj(src), mask, query_embed, pos_embed)[0]
+        # hs.shape=[num_layers, B, num_query, 256]
+
+        outputs_class = self.class_embed(hs)  # shape=[num_layers, B, num_query, 92]
+        outputs_coord = self.bbox_embed(hs).sigmoid()  # shape=[num_layers, B, num_query, 4]
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
@@ -325,8 +334,8 @@ def build(args):
         backbone,
         transformer,
         num_classes=num_classes,
-        num_queries=args.num_queries,
-        aux_loss=args.aux_loss,
+        num_queries=args.num_queries,  # 100 by default
+        aux_loss=args.aux_loss,  # True by default
     )
     if args.masks:
         model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))
