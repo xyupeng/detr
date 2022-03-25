@@ -60,9 +60,11 @@ class DETR(nn.Module):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
         pos_embed = pos[-1]
+        # features: list of NestedTensor; len == 1 in DETR
         # features[0].tensors: shape=[B, 2048, H, W]  # downsample by 32
         # features[0].mask: shape=[B, H, W]
-        # pos_embed: shape=[B, 256, H, W]; positional embedding
+        # pos: list of Tensor; len == 1 in DETR
+        # pos[0]: shape=[B, 256, H, W]; positional embedding
 
         src, mask = features[-1].decompose()
         # src.shape=[B, 2048, H, W]
@@ -71,10 +73,10 @@ class DETR(nn.Module):
 
         query_embed = self.query_embed.weight
         hs = self.transformer(self.input_proj(src), mask, query_embed, pos_embed)[0]
-        # hs.shape=[num_layers, B, num_query, 256]
+        # hs.shape=[num_layers, B, num_queries, 256]
 
-        outputs_class = self.class_embed(hs)  # shape=[num_layers, B, num_query, 92]
-        outputs_coord = self.bbox_embed(hs).sigmoid()  # shape=[num_layers, B, num_query, 4]
+        outputs_class = self.class_embed(hs)  # shape=[num_layers, B, num_queries, 92]
+        outputs_coord = self.bbox_embed(hs).sigmoid()  # shape=[num_layers, B, num_queries, 4]
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
@@ -158,6 +160,8 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
         target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+        # src_boxes: shape[num_gt_boxes_batch, 4]; sum of num_gt_boxes_i in the batch
+        # target_boxes: shape=[num_gt_boxes_batch, 4]
 
         loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
 

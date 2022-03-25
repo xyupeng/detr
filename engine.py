@@ -32,8 +32,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         outputs = model(samples)
         # outputs = {
-        #   'pred_logits': shape=[B, num_query, 92],  # last layer
-        #   'pred_boxes': shape=[B, num_query, 4],  # last layer
+        #   'pred_logits': shape=[B, num_query, 92]
+        #   'pred_boxes': shape=[B, num_query, 4]; within (0, 1)
         #   'aux_outputs': list of {'pred_logits', 'pred_boxes'} of intermediate layers
         # }
         loss_dict = criterion(outputs, targets)
